@@ -9,7 +9,13 @@ import net.mamoe.mirai.event.GlobalEventChannel
 import net.mamoe.mirai.event.events.*
 import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.utils.info
+import xyz.thetbw.bot.game.DouDiZhuGame
 import java.io.File
+
+/**
+ * 斗地主游戏
+ */
+val doudizhuGames = HashMap<Long,DouDiZhuGame>()
 
 object PluginMain : KotlinPlugin(
     JvmPluginDescription(
@@ -75,13 +81,43 @@ object PluginMain : KotlinPlugin(
         }
         eventChannel.subscribeAlways<FriendMessageEvent>{
             val content = message.content
+            //处理斗地主消息
             if (content.startsWith("#") || content.startsWith("/")){
+                return@subscribeAlways
+            }
+            if (doudizhuGames[bot.id] != null){
                 return@subscribeAlways
             }
             val response = OwnThinkBot.sendMessage(message.content,sender.id)
             //好友信息
             sender.sendMessage(response)
         }
+        //斗地主信息处理
+        eventChannel.subscribeAlways<FriendMessageEvent>{
+            val content = message.content
+            if (content.startsWith("#斗地主")){
+                if (doudizhuGames[bot.id] == null){
+                    val game = DouDiZhuGame(sender)
+                    doudizhuGames[bot.id] = game
+
+                }else{
+                    doudizhuGames[bot.id]!!.reset()
+                }
+                return@subscribeAlways
+            }
+            if (content.startsWith("#结束")){
+                if (doudizhuGames[bot.id] != null){
+                    doudizhuGames[bot.id]!!.over()
+                    doudizhuGames.remove(bot.id)
+                }else{
+                    sender.sendMessage("游戏并未开始")
+                }
+                return@subscribeAlways
+            }
+            doudizhuGames[bot.id]?.gameHandle(content)
+        }
+
+
         eventChannel.subscribeAlways<NewFriendRequestEvent>{
             if (config == null){
                 return@subscribeAlways
